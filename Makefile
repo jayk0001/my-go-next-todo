@@ -75,28 +75,56 @@ bench: ## Run benchmarks
 
 .PHONY: db-up
 db-up: ## Run database migrations
-	migrate -path $(MIGRATIONS_PATH) -database "$(DB_URL)" up
+	@if [ ! -f .env ]; then echo "Error: .env file not found. Please create .env file with DATABASE_URL"; exit 1; fi
+	@set -a; source .env; set +a; migrate -path $(MIGRATIONS_PATH) -database "$$DATABASE_URL" up
 
 .PHONY: db-down
 db-down: ## Rollback database migrations
-	migrate -path $(MIGRATIONS_PATH) -database "$(DB_URL)" down
+	@if [ ! -f .env ]; then echo "Error: .env file not found. Please create .env file with DATABASE_URL"; exit 1; fi
+	@set -a; source .env; set +a; migrate -path $(MIGRATIONS_PATH) -database "$$DATABASE_URL" down
 
 .PHONY: db-reset
 db-reset: ## Reset database (down then up)
-	migrate -path $(MIGRATIONS_PATH) -database "$(DB_URL)" down
-	migrate -path $(MIGRATIONS_PATH) -database "$(DB_URL)" up
+	@if [ ! -f .env ]; then echo "Error: .env file not found. Please create .env file with DATABASE_URL"; exit 1; fi
+	@set -a; source .env; set +a; migrate -path $(MIGRATIONS_PATH) -database "$$DATABASE_URL" down
+	@set -a; source .env; set +a; migrate -path $(MIGRATIONS_PATH) -database "$$DATABASE_URL" up
 
 .PHONY: db-force
 db-force: ## Force database version (usage: make db-force VERSION=1)
-	migrate -path $(MIGRATIONS_PATH) -database "$(DB_URL)" force $(VERSION)
+	@if [ ! -f .env ]; then echo "Error: .env file not found. Please create .env file with DATABASE_URL"; exit 1; fi
+	@if [ -z "$(VERSION)" ]; then echo "Error: VERSION is required. Usage: make db-force VERSION=1"; exit 1; fi
+	@set -a; source .env; set +a; migrate -path $(MIGRATIONS_PATH) -database "$$DATABASE_URL" force $(VERSION)
 
 .PHONY: db-version
 db-version: ## Show current database version
-	migrate -path $(MIGRATIONS_PATH) -database "$(DB_URL)" version
+	@if [ ! -f .env ]; then echo "Error: .env file not found. Please create .env file with DATABASE_URL"; exit 1; fi
+	@set -a; source .env; set +a; migrate -path $(MIGRATIONS_PATH) -database "$$DATABASE_URL" version
 
 .PHONY: db-create-migration
 db-create-migration: ## Create new migration file (usage: make db-create-migration NAME=add_users_table)
+	@if [ -z "$(NAME)" ]; then echo "Error: NAME is required. Usage: make db-create-migration NAME=migration_name"; exit 1; fi
 	migrate create -ext sql -dir $(MIGRATIONS_PATH) -seq $(NAME)
+
+.PHONY: db-status
+db-status: ## Show migration status and database info
+	@if [ ! -f .env ]; then echo "Error: .env file not found. Please create .env file with DATABASE_URL"; exit 1; fi
+	@echo "Database Migration Status:"
+	@set -a; source .env; set +a; migrate -path $(MIGRATIONS_PATH) -database "$$DATABASE_URL" version
+	@echo "\nAvailable migrations:"
+	@ls -la $(MIGRATIONS_PATH)/*.sql 2>/dev/null || echo "No migration files found"
+
+.PHONY: db-tables
+db-tables: ## List all tables in database
+	@if [ ! -f .env ]; then echo "Error: .env file not found"; exit 1; fi
+	@set -a; source .env; set +a; psql "$$DATABASE_URL" -c "\dt"
+	
+.PHONY: db-drop
+db-drop: ## Drop all tables (DANGEROUS - use with caution)
+	@echo "WARNING: This will drop all tables in the database!"
+	@echo "Are you sure? Type 'yes' to continue:"
+	@read confirmation; if [ "$$confirmation" != "yes" ]; then echo "Aborted."; exit 1; fi
+	@if [ ! -f .env ]; then echo "Error: .env file not found. Please create .env file with DATABASE_URL"; exit 1; fi
+	@set -a; source .env; set +a; migrate -path $(MIGRATIONS_PATH) -database "$$DATABASE_URL" drop
 
 ##@ Code Quality Commands
 
