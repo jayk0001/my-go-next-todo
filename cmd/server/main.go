@@ -24,12 +24,13 @@ func main() {
 
 	// Initialize database
 	db, err := database.New(database.Config{
-		Host:     cfg.Database.Host,
-		Port:     cfg.Database.Port,
-		User:     cfg.Database.User,
-		Password: cfg.Database.Password,
-		Database: cfg.Database.Database,
-		SSLMode:  cfg.Database.SSLMode,
+		Host:        cfg.Database.Host,
+		Port:        cfg.Database.Port,
+		User:        cfg.Database.User,
+		Password:    cfg.Database.Password,
+		Database:    cfg.Database.Database,
+		SSLMode:     cfg.Database.SSLMode,
+		DatabaseURL: cfg.Database.DatabaseURL, // Neon Connection string
 	})
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)

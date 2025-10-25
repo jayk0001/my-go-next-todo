@@ -1,64 +1,14 @@
-# Working Directory 
-# . or static route, default is current directory
 root = "."
-
-# Where to save build binary
 tmp_dir = "tmp"
 
 [build]
-  # Go application Entry point which Air will build
   cmd = "go build -o ./tmp/main ./cmd/server"
-  
-  # Running Cmd after building binary
   bin = "./tmp/main"
-  
-  # Custom Binary Name (Optional)
-  # full_bin = ""
-  
-  # Desire Running Cmb before Build (Optional)
-  # pre_cmd = ["echo 'Building...'"]
-  
-  # Desire Running Cmb after Build (Optional)
-  # post_cmd = ["echo 'Build completed'"]
-  
-  # Extensions to watch(Include)
-  include_ext = ["go", "tpl", "tmpl", "html", "graphql"]
-  
-  # Exlude files
-  exclude_file = []
-  
-  # Exclude Directories
-  exclude_dir = ["assets", "tmp", "vendor", "frontend", "node_modules", ".git"]
-  
-  # Exclude file name regex
-  exclude_regex = ["_test\\.go"]
-  
-  # Excluding unchanged file 
-  exclude_unchanged = true
-  
-  # Following symbolic links
-  follow_symlink = true
-  
-  # If this file changed, rebuild all
-  full_bin = ""
-  
-  # cmd args to hand over to applications
-  args_bin = []
-  
-  # Condition to watch if build failed to error
-  stop_on_error = false
-  
-  # Condition to kill the process when log.fater called 
-  send_interrupt = false
-  
-  # Idle(Delay) time to wait before kill the process (ms)
-  kill_delay = 500
-  
-  # Build Delay after file changed (ms) 
+  include_ext = ["go"]
+  include_dir = ["cmd", "internal"]
+  exclude_dir = ["tmp", "vendor", "frontend", "node_modules", ".git"]
   delay = 1000
-  
-  # Dealy after application rerun (ms)
-  rerun_delay = 500
+  stop_on_error = true
 
 [log]
   # Condition if want to show time in logs

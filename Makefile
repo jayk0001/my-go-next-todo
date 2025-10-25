@@ -16,13 +16,13 @@ GORUN=$(GOCMD) run
 BUILD_FLAGS=-ldflags="-w -s"
 DEV_BUILD_FLAGS=-race
 
-# Database configuration (will be moved to .env later)
+# Database configuration (will use DATABASE_URL from .env if available)
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=password
 DB_NAME=todoapp
-DB_URL=postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable
+DB_URL=$(shell if [ -n "$$DATABASE_URL" ]; then echo "$$DATABASE_URL"; else echo "postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=require"; fi)
 
 # Default target
 .DEFAULT_GOAL := help

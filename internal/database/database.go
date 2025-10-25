@@ -10,12 +10,14 @@ import (
 
 // Config holds database configuration
 type Config struct {
-	Host     string
-	Port     string
-	User     string
-	Password string
-	Database string
-	SSLMode  string
+	// Support both individual fields and DATABASE_URL
+	Host        string
+	Port        string
+	User        string
+	Password    string
+	Database    string
+	SSLMode     string
+	DatabaseURL string // For Neon and other cloud providers
 }
 
 // DB wraps the database connection pool
@@ -25,21 +27,30 @@ type DB struct {
 
 // New creates a new database connection pool
 func New(cfg Config) (*DB, error) {
-	dsn := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.Database, cfg.SSLMode,
-	)
+	var dsn string
+	// Prefer DATABASE_URL if provided(Neon Standard)
+
+	if cfg.DatabaseURL != "" {
+		dsn = cfg.DatabaseURL
+	} else {
+		// Fallbak to individual connection parameters
+		dsn = fmt.Sprintf(
+			"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+			cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.Database, cfg.SSLMode,
+		)
+	}
 
 	config, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse database config: %w", err)
 	}
 
-	// Configure connection pool settings
+	// Configure connection pool settings optimized for cloud databases
 	config.MaxConns = 25
 	config.MinConns = 5
 	config.MaxConnLifetime = time.Hour
 	config.MaxConnIdleTime = time.Minute * 30
+	config.HealthCheckPeriod = time.Minute * 5
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {

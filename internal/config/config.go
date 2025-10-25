@@ -19,12 +19,13 @@ type Config struct {
 
 // DatabaseConfig holds database configuration
 type DatabaseConfig struct {
-	Host     string
-	Port     string
-	User     string
-	Password string
-	Database string
-	SSLMode  string
+	Host        string
+	Port        string
+	User        string
+	Password    string
+	Database    string
+	SSLMode     string
+	DatabaseURL string // For Cloud providers like neon
 }
 
 // ServerConfig holds server configuration
@@ -55,12 +56,13 @@ func Load() (*Config, error) {
 
 	cfg := &Config{
 		Database: DatabaseConfig{
-			Host:     getEnv("DB_HOST", "localhost"),
-			Port:     getEnv("DB_PORT", "5432"),
-			User:     getEnv("DB_USER", "postgres"),
-			Password: getEnv("DB_PASSWORD", ""),
-			Database: getEnv("DB_NAME", "todoapp"),
-			SSLMode:  getEnv("DB_SSL_MODE", "disable"),
+			Host:        getEnv("DB_HOST", "localhost"),
+			Port:        getEnv("DB_PORT", "5432"),
+			User:        getEnv("DB_USER", "postgres"),
+			Password:    getEnv("DB_PASSWORD", ""),
+			Database:    getEnv("DB_NAME", "todoapp"),
+			SSLMode:     getEnv("DB_SSL_MODE", "require"), // Default to 'require' for cloud DBs
+			DatabaseURL: getEnv("DATABASE_URL", ""),       // Neon connection string
 		},
 		Server: ServerConfig{
 			Host: getEnv("SERVER_HOST", "localhost"),
@@ -86,6 +88,18 @@ func Load() (*Config, error) {
 
 // Validate validates the configuration
 func (c *Config) Validate() error {
+	// If DATABASE_URL is provided, skip individual field validation
+	if c.Database.DatabaseURL != "" {
+		// Just validate JWT Secret
+		if c.JWT.Secret == "" {
+			return fmt.Errorf("JWT secret is required")
+		}
+		if len(c.JWT.Secret) < 32 {
+			return fmt.Errorf("JWT secret must be at least 32 characters long")
+		}
+		return nil
+	}
+	// Otherwise validate individual database fields
 	if c.Database.Password == "" {
 		return fmt.Errorf("database password is required")
 	}
@@ -95,7 +109,7 @@ func (c *Config) Validate() error {
 	}
 
 	if len(c.JWT.Secret) < 32 {
-		return fmt.Errorf("JWT secret must be at least 32 characters long")
+		return fmt.Errorf("JWT secret invalid")
 	}
 
 	return nil
