@@ -126,6 +126,20 @@ db-drop: ## Drop all tables (DANGEROUS - use with caution)
 	@if [ ! -f .env ]; then echo "Error: .env file not found. Please create .env file with DATABASE_URL"; exit 1; fi
 	@set -a; source .env; set +a; migrate -path $(MIGRATIONS_PATH) -database "$$DATABASE_URL" drop
 
+##@ GraphQL Commands
+
+.PHONY: gql-generate
+gql-generate: ## Generate GraphQL code
+	go run github.com/99designs/gqlgen generate
+
+.PHONY: gql-init
+gql-init: ## Initialize GraphQL (run once)
+	go run github.com/99designs/gqlgen init
+
+.PHONY: gql-validate
+gql-validate: ## Validate GraphQL schema
+	go run github.com/99designs/gqlgen validate
+	
 ##@ Code Quality Commands
 
 .PHONY: fmt
