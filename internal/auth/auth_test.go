@@ -145,3 +145,32 @@ func TestValidatorService(t *testing.T) {
 	}
 
 }
+
+func TestGraphQLConversion(t *testing.T) {
+	// Create Mock User
+	user := &User{
+		ID:        123,
+		Email:     "test@example.com",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	// GraphQL conversion test
+	gqlUser := user.ToGraphQLUser()
+	if gqlUser.Email != user.Email {
+		t.Errorf("Email conversion failed")
+	}
+
+	// AuthResult conversion test
+	authResult := &AuthResult{
+		User:         user,
+		Token:        "test-token",
+		RefreshToken: "test-refresh",
+		ExpiresAt:    time.Now(),
+	}
+
+	gqlPayload := authResult.ToGraphQLAuthPayload()
+	if gqlPayload.Token != authResult.Token {
+		t.Errorf("Token conversion failed")
+	}
+}

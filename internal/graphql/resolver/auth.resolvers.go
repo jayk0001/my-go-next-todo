@@ -7,49 +7,101 @@ package resolver
 import (
 	"context"
 	"fmt"
+	"strconv"
 
+	"github.com/jayk0001/my-go-next-todo/internal/auth"
 	"github.com/jayk0001/my-go-next-todo/internal/graphql/generated"
 	"github.com/jayk0001/my-go-next-todo/internal/graphql/model"
 )
 
-// Register is the resolver for the register field.
 func (r *mutationResolver) Register(ctx context.Context, input model.RegisterInput) (*model.AuthPayload, error) {
-	panic(fmt.Errorf("not implemented: Register - register"))
+	// Use the auth service to register a new user
+	authResult, err := r.AuthService.Register(ctx, input.Email, input.Password)
+	if err != nil {
+		return nil, fmt.Errorf("registration failed: %w", err)
+	}
+
+	// Convert auth result to GraphQL model
+	return authResult.ToGraphQLAuthPayload(), nil
 }
 
 // Login is the resolver for the login field.
 func (r *mutationResolver) Login(ctx context.Context, input model.LoginInput) (*model.AuthPayload, error) {
-	panic(fmt.Errorf("not implemented: Login - login"))
+	// Use the auth service to authenticate user
+	authResult, err := r.AuthService.Login(ctx, input.Email, input.Password)
+	if err != nil {
+		return nil, fmt.Errorf("login failed: %w", err)
+	}
+
+	// Convert auth result to GraphQL model
+	return authResult.ToGraphQLAuthPayload(), nil
 }
 
 // RefreshToken is the resolver for the refreshToken field.
 func (r *mutationResolver) RefreshToken(ctx context.Context, token string) (*model.AuthPayload, error) {
-	panic(fmt.Errorf("not implemented: RefreshToken - refreshToken"))
+	// Use the auth service to refresh token
+	authResult, err := r.AuthService.RefreshToken(ctx, token)
+	if err != nil {
+		return nil, fmt.Errorf("failed to refresh token: %w", err)
+	}
+
+	// Convert auth result to GraphQL model
+	return authResult.ToGraphQLAuthPayload(), nil
 }
 
 // Logout is the resolver for the logout field.
 func (r *mutationResolver) Logout(ctx context.Context) (bool, error) {
-	panic(fmt.Errorf("not implemented: Logout - logout"))
+	// For now, logous is just a simple success response
+	// TODO: Implement actual logout logic (token blacklist, session invalidation)
+	return true, nil
 }
 
 // CurrentUser is the resolver for the currentUser field.
 func (r *queryResolver) CurrentUser(ctx context.Context) (*model.User, error) {
-	panic(fmt.Errorf("not implemented: CurrentUser - currentUser"))
+	user, ok := ctx.Value("user").(*auth.User)
+	if !ok {
+		return nil, fmt.Errorf("user not authenticated")
+	}
+
+	// Convert auth user to GraphQL model
+	return user.ToGraphQLUser(), nil
 }
 
 // UserProfile is the resolver for the userProfile field.
 func (r *queryResolver) UserProfile(ctx context.Context, id string) (*model.User, error) {
-	panic(fmt.Errorf("not implemented: UserProfile - userProfile"))
+	// Convert string ID to int
+	userID, err := strconv.Atoi(id)
+	if err != nil {
+		return nil, fmt.Errorf("invalid User ID: %w", err)
+	}
+
+	user, err := r.AuthService.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user profile: %w", err)
+	}
+
+	// Convert auth user to GraphQL model
+	return user.ToGraphQLUser(), nil
 }
 
 // Health is the resolver for the health field.
 func (r *queryResolver) Health(ctx context.Context) (string, error) {
-	panic(fmt.Errorf("not implemented: Health - health"))
+	return "ok", nil
 }
 
 // AuthStatusChanged is the resolver for the authStatusChanged field.
 func (r *subscriptionResolver) AuthStatusChanged(ctx context.Context) (<-chan *model.User, error) {
-	panic(fmt.Errorf("not implemented: AuthStatusChanged - authStatusChanged"))
+	// Create a channel for user updates
+	userChan := make(chan *model.User, 1)
+
+	// TODO: implement real-time auth status subscription
+	// For now, return an empty channel that closes when context is done
+	go func() {
+		defer close(userChan)
+		<-ctx.Done()
+	}()
+
+	return userChan, nil
 }
 
 // Mutation returns generated.MutationResolver implementation.
