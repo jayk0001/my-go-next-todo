@@ -9,9 +9,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/jayk0001/my-go-next-todo/internal/auth"
 	"github.com/jayk0001/my-go-next-todo/internal/graphql/generated"
 	"github.com/jayk0001/my-go-next-todo/internal/graphql/model"
+	"github.com/jayk0001/my-go-next-todo/internal/middleware"
 )
 
 func (r *mutationResolver) Register(ctx context.Context, input model.RegisterInput) (*model.AuthPayload, error) {
@@ -58,12 +58,10 @@ func (r *mutationResolver) Logout(ctx context.Context) (bool, error) {
 
 // CurrentUser is the resolver for the currentUser field.
 func (r *queryResolver) CurrentUser(ctx context.Context) (*model.User, error) {
-	user, ok := ctx.Value("user").(*auth.User)
+	user, ok := middleware.GetUserFromContext(ctx)
 	if !ok {
 		return nil, fmt.Errorf("user not authenticated")
 	}
-
-	// Convert auth user to GraphQL model
 	return user.ToGraphQLUser(), nil
 }
 

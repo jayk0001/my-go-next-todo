@@ -47,26 +47,31 @@ build-dev: ## Build development binary with race detection
 	mkdir -p $(BIN_DIR)
 	$(GOBUILD) $(DEV_BUILD_FLAGS) -o $(BIN_DIR)/$(APP_NAME)-dev $(MAIN_PATH)
 
+.PHONY: setup
+setup: deps ## Setup development environment
+	@echo "Setting up development environment..."
+	@if [ ! -f .env ]; then \
+		echo "Creating .env file from .env.example..."; \
+		cp .env.example .env 2>/dev/null || echo "Please create .env file manually"; \
+	fi
+	@echo "Environment ready! Run 'make dev' to start development server"
+
+.PHONY: deps-all
+deps-all: mod-download deps ## Install all dependencies
+	@echo "All dependencies installed"
+
 ##@ Testing Commands
 
-.PHONY: test
-test: ## Run all tests
-	$(GOTEST) -v ./...
+.PHONY: test-unit
+test-unit: ## Run unit tests (fast)
+	$(GOTEST) -v ./internal/...
 
-.PHONY: test-short
-test-short: ## Run tests with short flag
-	$(GOTEST) -short -v ./...
+.PHONY: test-integration
+test-integration: ## Run integration tests (slow, needs server)
+	$(GOTEST) -v ./tests/...
 
-.PHONY: test-cover
-test-cover: ## Run tests with coverage report
-	$(GOTEST) -coverprofile=coverage.out ./...
-	$(GOCMD) tool cover -html=coverage.out -o coverage.html
-	@echo "Coverage report generated: coverage.html"
-
-.PHONY: test-race
-test-race: ## Run tests with race detection
-	$(GOTEST) -race -v ./...
-
+.PHONY: test-all
+test-all: test-unit test-integration ## Run all tests
 .PHONY: bench
 bench: ## Run benchmarks
 	$(GOTEST) -bench=. -benchmem ./...
@@ -139,7 +144,11 @@ gql-init: ## Initialize GraphQL (run once)
 .PHONY: gql-validate
 gql-validate: ## Validate GraphQL schema
 	go run github.com/99designs/gqlgen validate
-	
+
+.PHONY: gql-initialize
+gql-initialize: ## Initialize GraphQL (alternative)
+	go run github.com/99designs/gqlgen init
+
 ##@ Code Quality Commands
 
 .PHONY: fmt
@@ -169,16 +178,6 @@ mod-download: ## Download Go modules
 .PHONY: mod-verify
 mod-verify: ## Verify Go modules
 	$(GOMOD) verify
-
-##@ GraphQL Commands
-
-.PHONY: gql-gen
-gql-gen: ## Generate GraphQL code
-	go run github.com/99designs/gqlgen generate
-
-.PHONY: gql-init
-gql-init: ## Initialize GraphQL (run once)
-	go run github.com/99designs/gqlgen init
 
 ##@ Frontend Commands (Next.js)
 
