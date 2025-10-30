@@ -9,9 +9,18 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type UserRepositoryInterface interface {
+	Create(ctx context.Context, input CreateUserInput) (*User, error)
+	GetByID(ctx context.Context, id int) (*User, error)
+	GetByEmail(ctx context.Context, email string) (*User, error)
+	EmailExists(ctx context.Context, email string) (bool, error)
+	UpdateLastLogin(ctx context.Context, userID int) error
+	Authenticate(ctx context.Context, email, password string) (*User, error)
+}
+
 // AuthService handles authentication business logic
 type AuthService struct {
-	userRepo         *UserRepository
+	userRepo         UserRepositoryInterface
 	jwtService       *JWTService
 	passwordService  *PasswordService
 	validatorService *ValidatorService
@@ -25,7 +34,6 @@ type AuthResult struct {
 	ExpiresAt    time.Time
 }
 
-// NewAuthService created a new authentication service
 func NewAuthService(db *pgxpool.Pool, jwtSecret string, tokenExpiry time.Duration) *AuthService {
 	return &AuthService{
 		userRepo:         NewUserRepository(db),

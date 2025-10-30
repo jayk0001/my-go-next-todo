@@ -83,7 +83,31 @@ func (v *ValidatorService) IsValidEmail(email string) bool {
 	if len(email) > 254 {
 		return false
 	}
-	return EmailRegex.MatchString(email)
+	// Basic regex check
+	if !EmailRegex.MatchString(email) {
+		return false
+	}
+
+	// Additional checks for edge cases
+	if strings.Contains(email, "..") {
+		return false
+	}
+
+	if strings.HasPrefix(email, ".") || strings.HasSuffix(email, ".") {
+		return false
+	}
+
+	parts := strings.Split(email, "@")
+	if len(parts) < 2 {
+		return false
+	}
+
+	localPart := parts[0]
+	if strings.HasPrefix(localPart, ".") || strings.HasSuffix(localPart, ".") {
+		return false
+	}
+
+	return true
 }
 
 // IsValidPassword checks if password meets requirements
