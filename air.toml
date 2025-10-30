@@ -7,20 +7,17 @@ tmp_dir = "tmp"
   include_ext = ["go"]
   include_dir = ["cmd", "internal"]
   exclude_dir = ["tmp", "vendor", "frontend", "node_modules", ".git"]
+  exclude_file = []
   delay = 1000
-  stop_on_error = true
 
 [log]
-  # Condition if want to show time in logs
   time = false
 
 [color]
-  # Condition if want to use color for output
   main = "magenta"
   watcher = "cyan"
   build = "yellow"
   runner = "green"
 
 [misc]
-  # Clean up all process when system exit
   clean_on_exit = true

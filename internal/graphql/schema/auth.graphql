@@ -1,0 +1,82 @@
+# scalar Time represents a timestamp
+scalar Time
+
+# User represents a user in the system
+type User {
+  id: ID!
+  email: String!
+  createdAt: String!
+  updatedAt: String!
+  # Authentication related fields (field-level permissions will be applied)
+  lastLoginAt: String
+  authInfo: AuthInfo
+}
+
+# AuthInfo contains authentication metadata
+type AuthInfo {
+  loginCount: Int!
+  lastLoginAt: String
+  activeSessions: [Session!]!
+}
+
+# Session represents an active user session
+type Session {
+  id: ID!
+  deviceType: String
+  ipAddress: String
+  lastActiveAt: String!
+  isActive: Boolean!
+}
+
+# AuthPayload is returned after successful authentication
+type AuthPayload {
+  token: String!
+  refreshToken: String!
+  user: User!
+  expiresAt: String!
+}
+
+# RegisterInput contains user registration data
+input RegisterInput {
+  email: String!
+  password: String!
+}
+
+# LoginInput contains user login data  
+input LoginInput {
+  email: String!
+  password: String!
+}
+
+# Root Query type
+type Query {
+  # Get current authenticated user
+  currentUser: User
+  
+  # Get user profile by ID (with field-level permissions)
+  userProfile(id: ID!): User
+  
+  # Health check
+  health: String!
+}
+
+# Root Mutation type
+type Mutation {
+  # Register a new user
+  register(input: RegisterInput!): AuthPayload!
+  
+  # Login user
+  login(input: LoginInput!): AuthPayload!
+  
+  # Refresh JWT token
+  refreshToken(token: String!): AuthPayload!
+  
+  # Logout current user
+  logout: Boolean!
+}
+
+# Root Subscription type (for future real-time features)
+type Subscription {
+  # Subscribe to authentication status changes
+  authStatusChanged: User
+}

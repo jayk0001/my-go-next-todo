@@ -6,16 +6,23 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/gin-gonic/gin"
+	"github.com/jayk0001/my-go-next-todo/internal/auth"
 	"github.com/jayk0001/my-go-next-todo/internal/config"
 	"github.com/jayk0001/my-go-next-todo/internal/database"
+	"github.com/jayk0001/my-go-next-todo/internal/graphql/generated"
+	"github.com/jayk0001/my-go-next-todo/internal/graphql/resolver"
+	"github.com/jayk0001/my-go-next-todo/internal/middleware"
 )
 
 // Server holds the HTTP server and dependencies
 type Server struct {
-	router *gin.Engine
-	db     *database.DB
-	config *config.Config
+	router      *gin.Engine
+	db          *database.DB
+	config      *config.Config
+	authService *auth.AuthService // 추가
 }
 
 // New creates a new server instance
@@ -27,16 +34,21 @@ func New(cfg *config.Config, db *database.DB) *Server {
 
 	router := gin.New()
 
-	// Middleware
+	// Initialize auth service
+	authService := auth.NewAuthService(db.Pool, cfg.JWT.Secret, cfg.JWT.ExpiryHours)
+
+	server := &Server{
+		router:      router,
+		db:          db,
+		config:      cfg,
+		authService: authService, // save to struct
+	}
+
+	// Middleware (get authService from struct)
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 	router.Use(corsMiddleware())
-
-	server := &Server{
-		router: router,
-		db:     db,
-		config: cfg,
-	}
+	router.Use(middleware.AuthMiddleware(server.authService))
 
 	server.setupRoutes()
 	return server
@@ -52,6 +64,9 @@ func (s *Server) setupRoutes() {
 		health.GET("ready", s.readinessCheck)
 		health.GET("live", s.livenessCheck)
 	}
+
+	// GraphQL routes
+	s.setupGraphQL()
 
 	// API version 1
 	v1 := s.router.Group("/api/v1")
@@ -71,6 +86,25 @@ func (s *Server) Start() error {
 // Router returns the gin router (useful for testing)
 func (s *Server) Router() *gin.Engine {
 	return s.router
+}
+
+// graphQL setting
+func (s *Server) setupGraphQL() {
+	// Reset AuthService
+	resolverInstance := resolver.NewResolver(s.authService)
+
+	// create GraphQL server
+	gqlServer := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{
+		Resolvers: resolverInstance,
+	}))
+
+	// Playground only available in Development mode
+	if s.config.IsDevelopment() {
+		s.router.GET("/graphql", gin.WrapH(playground.Handler("GraphQL Playground", "/graphql/query")))
+	}
+
+	// GraphQL endpoint
+	s.router.POST("/graphql/query", gin.WrapH(gqlServer))
 }
 
 // healthCheck handles GET /health
