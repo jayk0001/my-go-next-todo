@@ -1,0 +1,92 @@
+# Todo represents a todo item in the system
+type Todo {
+  id: ID!
+  title: String!
+  description: String
+  completed: Boolean!
+  createdAt: String!
+  updatedAt: String!
+  user: User!
+}
+
+# TodoStats represents statistics about user's todos
+type TodoStats {
+  total: Int!
+  completed: Int!
+  pending: Int!
+}
+
+# TodoListResponse represents a paginated list of todos
+type TodoListResponse {
+  todos: [Todo!]!
+  total: Int!
+  limit: Int!
+  offset: Int!
+  hasMore: Boolean!
+}
+
+# CreateTodoInput contains data for creating a new todo
+input CreateTodoInput {
+  title: String!
+  description: String
+}
+
+# UpdateTodoInput contains data for updating a todo
+input UpdateTodoInput {
+  title: String
+  description: String
+  completed: Boolean
+}
+
+# TodoFilter contains filtering options for querying todos
+input TodoFilter {
+  completed: Boolean
+  search: String
+  limit: Int
+  offset: Int
+}
+
+# BatchUpdateInput for updating multiple todos
+input BatchUpdateInput {
+  todoIds: [ID!]!
+  updates: UpdateTodoInput!
+}
+
+# Extend existing Query type
+extend type Query {
+  # Get todos for current user with filtering
+  todos(filter: TodoFilter): TodoListResponse!
+  
+  # Get a specific todo by ID
+  todo(id: ID!): Todo
+  
+  # Get todo statistics for current user
+  todoStats: TodoStats!
+}
+
+# Extend existing Mutation type  
+extend type Mutation {
+  # Create a new todo
+  createTodo(input: CreateTodoInput!): Todo!
+  
+  # Update an existing todo
+  updateTodo(id: ID!, input: UpdateTodoInput!): Todo!
+  
+  # Delete a todo
+  deleteTodo(id: ID!): Boolean!
+  
+  # Toggle todo completion status
+  toggleTodo(id: ID!): Todo!
+  
+  # Batch update multiple todos
+  batchUpdateTodos(input: BatchUpdateInput!): [Todo!]!
+}
+
+# Extend existing Subscription type (for future real-time features)
+extend type Subscription {
+  # Subscribe to todo changes for current user
+  todoChanged: Todo
+  
+  # Subscribe to todo statistics changes
+  todoStatsChanged: TodoStats
+}
