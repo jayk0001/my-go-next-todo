@@ -2,6 +2,7 @@ package todo
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -196,23 +197,34 @@ func (s *TodoService) BatchUpdateTodos(ctx context.Context, userID int, todoIDs 
 		return nil, fmt.Errorf("validation failed: %w", err)
 	}
 
+	var updatedTodos []*Todo
+	var errs []error
+
 	// First pass: validates all todos exist and user owns them
 	for _, todoID := range todoIDs {
+		// Check ownership
 		_, err := s.repo.GetByID(ctx, todoID, userID)
 		if err != nil {
-			return nil, fmt.Errorf("todo %d: %w", todoID, err)
+			if err == ErrTodoNotFound {
+				errs = append(errs, fmt.Errorf("todo %d: %w", todoID, ErrTodoAccessDenied))
+				continue // Skip unowned
+			}
+			errs = append(errs, fmt.Errorf("todo %d: failted to check ownershio: %w", todoID, err))
 		}
+
+		// Update if owned
+		updated, err := s.repo.Update(ctx, todoID, userID, input)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("todo %d: failted to update: %w", todoID, err))
+			continue
+		}
+		updatedTodos = append(updatedTodos, updated)
 	}
 
-	// Second pass: update all
-	var updatedTodos []*Todo
-	for _, todoID := range todoIDs {
-		todo, err := s.repo.Update(ctx, todoID, userID, input)
-		if err != nil {
-			return nil, fmt.Errorf("failed to updated todo %d: %w", todoID, err)
-		}
-		updatedTodos = append(updatedTodos, todo)
+	if len(errs) > 0 {
+		return updatedTodos, errors.Join(errs...)
 	}
+
 	return updatedTodos, nil
 }
 

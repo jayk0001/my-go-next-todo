@@ -2,10 +2,10 @@ package todo
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -67,7 +67,7 @@ func (r *TodoRepository) GetByID(ctx context.Context, todoId, userID int) (*Todo
 	)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == pgx.ErrNoRows {
 			return nil, ErrTodoNotFound
 		}
 		return nil, fmt.Errorf("failed to get todo: %w", err)
@@ -225,7 +225,7 @@ func (r *TodoRepository) Update(ctx context.Context, todoID, userID int, input U
 	)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == pgx.ErrNoRows {
 			return nil, ErrTodoNotFound
 		}
 		return nil, fmt.Errorf("failed to update todo: %w", err)
@@ -275,7 +275,7 @@ func (r *TodoRepository) ToggleComplete(ctx context.Context, todoID, userID int)
 		&todo.UpdatedAt,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == pgx.ErrNoRows {
 			return nil, ErrTodoNotFound
 		}
 		return nil, fmt.Errorf("failed to toggle complete todo: %w", err)
