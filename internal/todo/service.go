@@ -14,12 +14,20 @@ type TodoService struct {
 	validator *ValidatorService
 }
 
-// NewTodoService creates a new todo service
-func NewTodoService(db *pgxpool.Pool) *TodoService {
+// NewTodoService creates a new todo service with provided dependencies
+func NewTodoService(repo Repository, validator *ValidatorService) *TodoService {
 	return &TodoService{
-		repo:      NewTodoRepository(db),
-		validator: NewValidatorService(),
+		repo:      repo,
+		validator: validator,
 	}
+}
+
+// NewTodoServiceWithDB creates a new todo service with database connection
+func NewTodoServiceWithDB(db *pgxpool.Pool) *TodoService {
+	return NewTodoService(
+		NewTodoRepository(db),
+		NewValidatorService(),
+	)
 }
 
 // CreateTodo creates a new todo with validation
@@ -188,22 +196,23 @@ func (s *TodoService) BatchUpdateTodos(ctx context.Context, userID int, todoIDs 
 		return nil, fmt.Errorf("validation failed: %w", err)
 	}
 
-	var updatedTodos []*Todo
-	var errors []string
-
+	// First pass: validates all todos exist and user owns them
 	for _, todoID := range todoIDs {
-		todo, err := s.UpdateTodo(ctx, todoID, userID, input)
+		_, err := s.repo.GetByID(ctx, todoID, userID)
 		if err != nil {
-			errors = append(errors, fmt.Sprintf("todo %d: %v", todoID, err))
-			continue
+			return nil, fmt.Errorf("todo %d: %w", todoID, err)
+		}
+	}
+
+	// Second pass: update all
+	var updatedTodos []*Todo
+	for _, todoID := range todoIDs {
+		todo, err := s.repo.Update(ctx, todoID, userID, input)
+		if err != nil {
+			return nil, fmt.Errorf("failed to updated todo %d: %w", todoID, err)
 		}
 		updatedTodos = append(updatedTodos, todo)
 	}
-
-	if len(errors) > 0 {
-		return updatedTodos, fmt.Errorf("batch update errors: %s", strings.Join(errors, "; "))
-	}
-
 	return updatedTodos, nil
 }
 

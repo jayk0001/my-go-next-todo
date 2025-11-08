@@ -33,8 +33,8 @@ func (r *TodoRepository) Create(ctx context.Context, userID int, input CreateTod
 	err := r.db.QueryRow(ctx, query, userID, input.Title, input.Description).Scan(
 		&todo.ID,
 		&todo.UserID,
+		&todo.Title,
 		&todo.Description,
-		&todo.Completed,
 		&todo.CreatedAt,
 		&todo.UpdatedAt,
 	)
@@ -80,7 +80,7 @@ func (r *TodoRepository) GetByID(ctx context.Context, todoId, userID int) (*Todo
 func (r *TodoRepository) GetByUserID(ctx context.Context, userID int, filter TodoFilter) (*TodoListResponse, error) {
 	// Build query with filters
 	query := `
-		SELECT id, user_id, title, description, completed, updated_at, created_at
+		SELECT id, user_id, title, description, completed, created_at, updated_at
 		FROM todos
 		WHERE user_id = $1
 	`
@@ -89,7 +89,7 @@ func (r *TodoRepository) GetByUserID(ctx context.Context, userID int, filter Tod
 
 	// Add completed filter
 	if filter.Completed != nil {
-		query += fmt.Sprintf(" AND completed $%d", argIndex)
+		query += fmt.Sprintf(" AND completed = $%d", argIndex)
 		args = append(args, *filter.Completed)
 		argIndex++
 	}
@@ -107,13 +107,13 @@ func (r *TodoRepository) GetByUserID(ctx context.Context, userID int, filter Tod
 
 	// Add pagination
 	if filter.Limit > 0 {
-		query += fmt.Sprintf(" LIMIT %d", argIndex)
+		query += fmt.Sprintf(" LIMIT $%d", argIndex)
 		args = append(args, filter.Limit)
 		argIndex++
 	}
 
 	if filter.Offset > 0 {
-		query += fmt.Sprintf(" OFFSET %d", argIndex)
+		query += fmt.Sprintf(" OFFSET $%d", argIndex)
 		args = append(args, filter.Offset)
 		argIndex++
 	}
@@ -181,20 +181,20 @@ func (r *TodoRepository) Update(ctx context.Context, todoID, userID int, input U
 	argIndex := 3
 
 	if input.Title != nil {
-		setParts = append(setParts, fmt.Sprintf("title = %d", argIndex))
-		args = append(args, input.Title)
+		setParts = append(setParts, fmt.Sprintf("title = $%d", argIndex))
+		args = append(args, *input.Title)
 		argIndex++
 	}
 
 	if input.Description != nil {
-		setParts = append(setParts, fmt.Sprintf("description = %d", argIndex))
-		args = append(args, input.Description)
+		setParts = append(setParts, fmt.Sprintf("description = $%d", argIndex))
+		args = append(args, *input.Description)
 		argIndex++
 	}
 
 	if input.Completed != nil {
-		setParts = append(setParts, fmt.Sprintf("completed = %d", argIndex))
-		args = append(args, input.Completed)
+		setParts = append(setParts, fmt.Sprintf("completed = $%d", argIndex))
+		args = append(args, *input.Completed)
 		argIndex++
 	}
 
@@ -204,6 +204,8 @@ func (r *TodoRepository) Update(ctx context.Context, todoID, userID int, input U
 	}
 
 	// Add updated_at
+	setParts = append(setParts, "updated_at = NOW()")
+
 	query := fmt.Sprintf(`
 		UPDATE todos
 		SET %s
@@ -223,6 +225,9 @@ func (r *TodoRepository) Update(ctx context.Context, todoID, userID int, input U
 	)
 
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrTodoNotFound
+		}
 		return nil, fmt.Errorf("failed to update todo: %w", err)
 	}
 
