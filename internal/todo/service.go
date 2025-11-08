@@ -15,6 +15,20 @@ type TodoService struct {
 	validator *ValidatorService
 }
 
+// TodoServiceInterface defines the contract for TodoService
+type TodoServiceInterface interface {
+	CreateTodo(ctx context.Context, userID int, input CreateTodoInput) (*Todo, error)
+	GetTodo(ctx context.Context, todoID, userID int) (*Todo, error)
+	GetUserTodos(ctx context.Context, userID int, filter TodoFilter) (*TodoListResponse, error)
+	UpdateTodo(ctx context.Context, todoID, userID int, input UpdateTodoInput) (*Todo, error)
+	DeleteTodo(ctx context.Context, todoID, userID int) error
+	ToggleTodoComplete(ctx context.Context, todoID, userID int) (*Todo, error)
+	GetUserTodoStats(ctx context.Context, userID int) (*TodoStats, error)
+	BatchUpdateTodos(ctx context.Context, userID int, todoIDs []int, input UpdateTodoInput) ([]*Todo, error)
+}
+
+var _ TodoServiceInterface = (*TodoService)(nil)
+
 // NewTodoService creates a new todo service with provided dependencies
 func NewTodoService(repo Repository, validator *ValidatorService) *TodoService {
 	return &TodoService{

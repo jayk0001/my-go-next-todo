@@ -11,11 +11,11 @@ import (
 
 type Resolver struct {
 	AuthService *auth.AuthService
-	TodoService *todo.TodoService
+	TodoService todo.TodoServiceInterface
 }
 
 // NewResolver created a new resolver with dependencies
-func NewResolver(authService *auth.AuthService, todoService *todo.TodoService) *Resolver {
+func NewResolver(authService *auth.AuthService, todoService todo.TodoServiceInterface) *Resolver {
 	return &Resolver{
 		AuthService: authService,
 		TodoService: todoService,

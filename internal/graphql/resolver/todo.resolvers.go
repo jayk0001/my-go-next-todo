@@ -14,6 +14,10 @@ import (
 	"github.com/jayk0001/my-go-next-todo/internal/todo"
 )
 
+type contextKey string
+
+const userIDKey contextKey = "UserID"
+
 // CreateTodo is the resolver for the createTodo field.
 func (r *mutationResolver) CreateTodo(ctx context.Context, input model.CreateTodoInput) (*model.Todo, error) {
 	// Extract user ID from context (set by auth middleware)
@@ -261,13 +265,10 @@ func convertTodoToGraphQL(t *todo.Todo) *model.Todo {
 
 // Helper function to extract user ID from context
 func getUserIDFromContext(ctx context.Context) (int, error) {
-	// This assumes the auth middleware sets the user ID in context
-	// Adjust based on your auth middleware implementation
-	userID, ok := ctx.Value("UserID").(int)
+	userID, ok := ctx.Value(userIDKey).(int)
 	if !ok {
 		return 0, errors.New("user not authenticated")
 	}
-
 	return userID, nil
 }
 
