@@ -8,7 +8,9 @@ import (
 
 	"github.com/99designs/gqlgen/client"
 	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/jayk0001/my-go-next-todo/internal/auth"
 	"github.com/jayk0001/my-go-next-todo/internal/graphql/generated"
+	"github.com/jayk0001/my-go-next-todo/internal/middleware" // Add this import
 	"github.com/jayk0001/my-go-next-todo/internal/todo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -99,10 +101,13 @@ func newTestClient(mockTodoSvc todo.TodoServiceInterface) *client.Client {
 	return client.New(server)
 }
 
-// withUserCtxModifier returns a client.RequestModifier to add userID to the GraphQL context
-func withUserCtxModifier(userID int) client.Option {
+// withAuthUserModifier returns a client.Option to add a mock user to the context
+func withAuthUserModifier(userID int) client.Option {
 	return func(bd *client.Request) {
-		ctx := context.WithValue(bd.HTTP.Context(), userIDKey, userID)
+		mockUser := &auth.User{
+			ID: userID,
+		}
+		ctx := context.WithValue(bd.HTTP.Context(), middleware.UserContextKey, mockUser)
 		bd.HTTP = bd.HTTP.WithContext(ctx)
 	}
 }
@@ -141,7 +146,7 @@ func TestQuery_Todos(t *testing.T) {
 	err := c.Post(
 		`query { todos { todos { id title } total limit offset hasMore } }`,
 		&resp,
-		withUserCtxModifier(1),
+		withAuthUserModifier(1),
 	)
 	require.NoError(t, err)
 	assert.Len(t, resp.Todos.Todos, 1)
@@ -182,7 +187,7 @@ func TestQuery_Todos_WithFilter(t *testing.T) {
 	err := c.Post(
 		`query { todos(filter: {completed: true}) { todos { id title completed } } }`,
 		&resp,
-		withUserCtxModifier(1),
+		withAuthUserModifier(1),
 	)
 	require.NoError(t, err)
 	assert.Len(t, resp.Todos.Todos, 1)
@@ -224,7 +229,7 @@ func TestQuery_Todo(t *testing.T) {
 	err := c.Post(
 		`query { todo(id: "1") { id title } }`,
 		&resp,
-		withUserCtxModifier(1),
+		withAuthUserModifier(1),
 	)
 	require.NoError(t, err)
 	assert.Equal(t, "1", resp.Todo.ID)
@@ -244,7 +249,7 @@ func TestQuery_Todo_NotFound(t *testing.T) {
 	err := c.Post(
 		`query { todo(id: "999") { id } }`,
 		&resp,
-		withUserCtxModifier(1),
+		withAuthUserModifier(1),
 	)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "todo not found")
@@ -273,7 +278,7 @@ func TestMutation_CreateTodo(t *testing.T) {
 	err := c.Post(
 		`mutation { createTodo(input: {title: "New Todo", description: "Desc"}) { id title description } }`,
 		&resp,
-		withUserCtxModifier(1),
+		withAuthUserModifier(1),
 	)
 	require.NoError(t, err)
 	assert.Equal(t, "1", resp.CreateTodo.ID)
@@ -294,7 +299,7 @@ func TestMutation_CreateTodo_InvalidInput(t *testing.T) {
 	err := c.Post(
 		`mutation { createTodo(input: {title: ""}) { id } }`,
 		&resp,
-		withUserCtxModifier(1),
+		withAuthUserModifier(1),
 	)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "todo title is required")
@@ -323,7 +328,7 @@ func TestMutation_UpdateTodo(t *testing.T) {
 	err := c.Post(
 		`mutation { updateTodo(id: "1", input: {title: "Updated Title", completed: true}) { id title completed } }`,
 		&resp,
-		withUserCtxModifier(1),
+		withAuthUserModifier(1),
 	)
 	require.NoError(t, err)
 	assert.Equal(t, "1", resp.UpdateTodo.ID)
@@ -349,7 +354,7 @@ func TestMutation_DeleteTodo(t *testing.T) {
 	err := c.Post(
 		`mutation { deleteTodo(id: "1") }`,
 		&resp,
-		withUserCtxModifier(1),
+		withAuthUserModifier(1),
 	)
 	require.NoError(t, err)
 	assert.True(t, resp.DeleteTodo)
@@ -368,7 +373,7 @@ func TestMutation_DeleteTodo_NotFound(t *testing.T) {
 	err := c.Post(
 		`mutation { deleteTodo(id: "999") }`,
 		&resp,
-		withUserCtxModifier(1),
+		withAuthUserModifier(1),
 	)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "todo not found")
@@ -395,7 +400,7 @@ func TestMutation_ToggleTodo(t *testing.T) {
 	err := c.Post(
 		`mutation { toggleTodo(id: "1") { id completed } }`,
 		&resp,
-		withUserCtxModifier(1),
+		withAuthUserModifier(1),
 	)
 	require.NoError(t, err)
 	assert.True(t, resp.ToggleTodo.Completed)
@@ -426,7 +431,7 @@ func TestMutation_BatchUpdateTodos(t *testing.T) {
 	err := c.Post(
 		`mutation { batchUpdateTodos(input: {todoIds: ["1", "2"], updates: {completed: true}}) { id completed } }`,
 		&resp,
-		withUserCtxModifier(1),
+		withAuthUserModifier(1),
 	)
 	require.NoError(t, err)
 	assert.Len(t, resp.BatchUpdateTodos, 2)
@@ -447,7 +452,7 @@ func TestMutation_BatchUpdateTodos_PartialFailure(t *testing.T) {
 	err := c.Post(
 		`mutation { batchUpdateTodos(input: {todoIds: ["1", "2"], updates: {completed: true}}) { id } }`,
 		&resp,
-		withUserCtxModifier(1),
+		withAuthUserModifier(1),
 	)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "partial error")
@@ -474,7 +479,7 @@ func TestQuery_TodoStats(t *testing.T) {
 	err := c.Post(
 		`query { todoStats { total completed pending } }`,
 		&resp,
-		withUserCtxModifier(1),
+		withAuthUserModifier(1),
 	)
 	require.NoError(t, err)
 	assert.Equal(t, 5, resp.TodoStats.Total)
@@ -489,7 +494,7 @@ func TestSubscription_TodoChanged(t *testing.T) {
 
 	sub := c.Websocket(
 		`subscription { todoChanged { id } }`,
-		withUserCtxModifier(1),
+		withAuthUserModifier(1),
 	)
 	defer sub.Close()
 
@@ -505,7 +510,7 @@ func TestSubscription_TodoStatsChanged(t *testing.T) {
 
 	sub := c.Websocket(
 		`subscription { todoStatsChanged { total } }`,
-		withUserCtxModifier(1),
+		withAuthUserModifier(1),
 	)
 	defer sub.Close()
 

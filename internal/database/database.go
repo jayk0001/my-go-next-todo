@@ -79,3 +79,43 @@ func (db *DB) Close() {
 func (db *DB) Health(ctx context.Context) error {
 	return db.Pool.Ping(ctx)
 }
+
+// RunMigrations applies database schema migrations
+func RunMigrations(pool *pgxpool.Pool) error {
+	ctx := context.Background()
+
+	// Create users table with last_login_at to match repo
+	_, err := pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS users (
+			id SERIAL PRIMARY KEY,
+			email TEXT UNIQUE NOT NULL,
+			password_hash TEXT NOT NULL,
+			created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+			last_login_at TIMESTAMP WITH TIME ZONE
+		);
+		CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create users table: %w", err)
+	}
+
+	// Create todos table (unchanged)
+	_, err = pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS todos (
+			id SERIAL PRIMARY KEY,
+			user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			title VARCHAR(500) NOT NULL,
+			description TEXT,
+			completed BOOLEAN DEFAULT FALSE,
+			created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+		);
+		CREATE INDEX IF NOT EXISTS idx_todos_user_id ON todos(user_id);
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create todos table: %w", err)
+	}
+
+	return nil
+}

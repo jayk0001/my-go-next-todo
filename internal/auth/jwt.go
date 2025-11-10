@@ -3,6 +3,7 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -10,7 +11,7 @@ import (
 
 // JWTClaims defines the structure of JWT claims
 type JWTClaims struct {
-	UserID string `json:"user_id"`
+	UserID int    `json:"user_id"`
 	Email  string `json:"email"`
 	jwt.RegisteredClaims
 }
@@ -30,7 +31,7 @@ func NewJWTService(secretKey string, expiryHours time.Duration) *JWTService {
 }
 
 // GenerateToken creates a new JWT token for the user
-func (j *JWTService) GenerateToken(userID, email string) (string, error) {
+func (j *JWTService) GenerateToken(userID int, email string) (string, error) {
 	now := time.Now()
 	expiresAt := now.Add(j.expiryHours)
 
@@ -42,7 +43,7 @@ func (j *JWTService) GenerateToken(userID, email string) (string, error) {
 			IssuedAt:  jwt.NewNumericDate(now),
 			NotBefore: jwt.NewNumericDate(now),
 			Issuer:    "todo-app",
-			Subject:   userID,
+			Subject:   fmt.Sprintf("%d", userID),
 		},
 	}
 
@@ -63,7 +64,7 @@ func (j *JWTService) GenerateToken(userID, email string) (string, error) {
 }
 
 // GenerateRefreshToken creates a refresh token with longer expiry
-func (j *JWTService) GenerateRefreshToken(userID string) (string, error) {
+func (j *JWTService) GenerateRefreshToken(userID int) (string, error) {
 	now := time.Now()
 	expiresAt := now.Add(24 * 7 * time.Hour) // 7 days
 
@@ -72,7 +73,7 @@ func (j *JWTService) GenerateRefreshToken(userID string) (string, error) {
 		IssuedAt:  jwt.NewNumericDate(now),
 		NotBefore: jwt.NewNumericDate(now),
 		Issuer:    "todo-app-refresh",
-		Subject:   userID,
+		Subject:   fmt.Sprintf("%d", userID),
 	}
 
 	// Create token with explicit HMAC signing method
@@ -103,7 +104,7 @@ func (j *JWTService) ValidateToken(tokenString string) (*JWTClaims, error) {
 }
 
 // ValidateRefreshToken validates a refresh token
-func (j *JWTService) ValidateRefreshToken(tokenString string) (string, error) {
+func (j *JWTService) ValidateRefreshToken(tokenString string) (int, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &jwt.RegisteredClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("invalid signing method")
@@ -112,12 +113,16 @@ func (j *JWTService) ValidateRefreshToken(tokenString string) (string, error) {
 	})
 
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 
 	if claims, ok := token.Claims.(*jwt.RegisteredClaims); ok && token.Valid {
-		return claims.Subject, nil
+		userID, err := strconv.Atoi(claims.Subject)
+		if err != nil {
+			return 0, err
+		}
+		return userID, nil
 	}
 
-	return "", errors.New("invalid refresh token")
+	return 0, errors.New("invalid refresh token")
 }

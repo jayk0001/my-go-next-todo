@@ -6,17 +6,12 @@ package resolver
 
 import (
 	"context"
-	"errors"
 	"strconv"
 	"time"
 
 	"github.com/jayk0001/my-go-next-todo/internal/graphql/model"
 	"github.com/jayk0001/my-go-next-todo/internal/todo"
 )
-
-type contextKey string
-
-const userIDKey contextKey = "UserID"
 
 // CreateTodo is the resolver for the createTodo field.
 func (r *mutationResolver) CreateTodo(ctx context.Context, input model.CreateTodoInput) (*model.Todo, error) {
@@ -261,15 +256,6 @@ func convertTodoToGraphQL(t *todo.Todo) *model.Todo {
 		CreatedAt:   t.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:   t.UpdatedAt.Format(time.RFC3339),
 	}
-}
-
-// Helper function to extract user ID from context
-func getUserIDFromContext(ctx context.Context) (int, error) {
-	userID, ok := ctx.Value(userIDKey).(int)
-	if !ok {
-		return 0, errors.New("user not authenticated")
-	}
-	return userID, nil
 }
 
 // !!! WARNING !!!

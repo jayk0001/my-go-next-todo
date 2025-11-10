@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -63,13 +62,12 @@ func (s *AuthService) Register(ctx context.Context, email, password string) (*Au
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	UserIDStr := strconv.Itoa(user.ID)
-	token, err := s.jwtService.GenerateToken(UserIDStr, user.Email)
+	token, err := s.jwtService.GenerateToken(user.ID, user.Email)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
 
-	refreshToken, err := s.jwtService.GenerateRefreshToken(UserIDStr)
+	refreshToken, err := s.jwtService.GenerateRefreshToken(user.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
 	}
@@ -96,13 +94,12 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*AuthR
 	}
 
 	// Generate tokens
-	UserIDStr := strconv.Itoa(user.ID)
-	token, err := s.jwtService.GenerateToken(UserIDStr, user.Email)
+	token, err := s.jwtService.GenerateToken(user.ID, user.Email)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
 
-	refreshToken, err := s.jwtService.GenerateRefreshToken(UserIDStr)
+	refreshToken, err := s.jwtService.GenerateRefreshToken(user.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to refresh token: %w", err)
 	}
@@ -118,62 +115,43 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*AuthR
 // RefreshToken generates new tokens from refresh token
 func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*AuthResult, error) {
 	// Validate refresh token
-	userIDStr, err := s.jwtService.ValidateRefreshToken(refreshToken)
+	userID, err := s.jwtService.ValidateRefreshToken(refreshToken)
 	if err != nil {
 		return nil, fmt.Errorf("invalid refresh token: %w", err)
 	}
-	fmt.Println(userIDStr, "hmm")
+
 	// Get user
-	userID, err := strconv.Atoi(userIDStr)
+	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid user ID in token: %w", err)
 	}
 
-	user, err := s.userRepo.GetByID(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("user not found %w", err)
-	}
-
 	// Generate new tokens
-	newToken, err := s.jwtService.GenerateToken(userIDStr, user.Email)
+	newToken, err := s.jwtService.GenerateToken(user.ID, user.Email)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
 
-	newRefreshToken, err := s.jwtService.GenerateRefreshToken(userIDStr)
+	newRefreshToken, err := s.jwtService.GenerateRefreshToken(user.ID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to refresh token: %w", err)
+		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
 	}
 
 	return &AuthResult{
 		User:         user,
 		Token:        newToken,
 		RefreshToken: newRefreshToken,
-		ExpiresAt:    time.Now().Add(24 * 7 * time.Hour),
+		ExpiresAt:    time.Now().Add(s.jwtService.expiryHours),
 	}, nil
 }
 
 // GetUserFromToken extracts user from JWT token
-func (s *AuthService) GetUserFromToken(ctx context.Context, token string) (*User, error) {
-	// Validate token
-	claims, err := s.jwtService.ValidateToken(token)
+func (a *AuthService) GetUserFromToken(ctx context.Context, token string) (*User, error) {
+	claims, err := a.jwtService.ValidateToken(token)
 	if err != nil {
 		return nil, fmt.Errorf("invalid token: %w", err)
 	}
-
-	// Get user
-	userId, err := strconv.Atoi(claims.UserID)
-	if err != nil {
-		return nil, fmt.Errorf("invaild user ID in token: %w", err)
-	}
-
-	user, err := s.userRepo.GetByID(ctx, userId)
-	if err != nil {
-		return nil, fmt.Errorf("user not found: %w", err)
-	}
-
-	return user, nil
-
+	return a.userRepo.GetByID(ctx, claims.UserID)
 }
 
 // GetUserByID retrieves user by ID

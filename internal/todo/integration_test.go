@@ -2,37 +2,16 @@ package todo
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jayk0001/my-go-next-todo/internal/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
-
-func RunMigrations(pool *pgxpool.Pool) error {
-	ctx := context.Background()
-	// Execute your migration SQL (e.g., CREATE TABLE todos ...)
-	_, err := pool.Exec(ctx, `
-        CREATE TABLE IF NOT EXISTS todos (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER NOT NULL,
-            title VARCHAR(500) NOT NULL,
-            description TEXT,
-            completed BOOLEAN DEFAULT FALSE,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE INDEX IF NOT EXISTS idx_todos_user_id ON todos(user_id);
-    `)
-	if err != nil {
-		return fmt.Errorf("failed to run migrations: %w", err)
-	}
-	return nil
-}
 
 func TestTodoCRUD_Integration(t *testing.T) {
 	ctx := context.Background()
@@ -56,15 +35,21 @@ func TestTodoCRUD_Integration(t *testing.T) {
 	t.Cleanup(pool.Close)
 
 	// Run migrations (assume a func RunMigrations(pool))
-	require.NoError(t, RunMigrations(pool)) // Implement this to create todos table
+	require.NoError(t, database.RunMigrations(pool)) // Implement this to create todos table
+
+	// Create a test user (since todos has foreign key to users)
+	_, err = pool.Exec(ctx, `
+		INSERT INTO users (email, password_hash) VALUES ('test@example.com', 'test_hash')
+	`)
+	require.NoError(t, err)
 
 	repo := NewTodoRepository(pool)
 	service := NewTodoService(repo, NewValidatorService())
 
 	// Test Create
 	createInput := CreateTodoInput{Title: "Test", Description: stringPtr("Desc")}
-	created, err := service.CreateTodo(ctx, 1, createInput)
-	assert.NoError(t, err)
+	created, err := service.CreateTodo(ctx, 1, createInput) // userID=1 from insert above
+	require.NoError(t, err)                                 // Use require to halt on error
 	assert.Equal(t, "Test", created.Title)
 
 	// Test Get
