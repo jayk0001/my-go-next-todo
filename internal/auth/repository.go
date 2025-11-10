@@ -64,8 +64,8 @@ func (r *UserRepository) Create(ctx context.Context, input CreateUserInput) (*Us
 
 	// Insert User
 	query := `
-		INSERT INTO users (email, password_hash, created_at, updated_at)
-		VALUES($1, $2, NOW(), NOW())
+		INSERT INTO users (email, password_hash, created_at, updated_at, last_login_at)
+		VALUES($1, $2, NOW(), NOW(), NULL)
 		RETURNING id, email, password_hash, created_at, updated_at, last_login_at
 	`
 

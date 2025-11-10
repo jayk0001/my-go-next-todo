@@ -14,6 +14,7 @@ import (
 	"github.com/jayk0001/my-go-next-todo/internal/middleware"
 )
 
+// Register is the resolver for the register field.
 func (r *mutationResolver) Register(ctx context.Context, input model.RegisterInput) (*model.AuthPayload, error) {
 	// Use the auth service to register a new user
 	authResult, err := r.AuthService.Register(ctx, input.Email, input.Password)

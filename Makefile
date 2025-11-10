@@ -135,7 +135,7 @@ db-drop: ## Drop all tables (DANGEROUS - use with caution)
 
 .PHONY: gql-generate
 gql-generate: ## Generate GraphQL code
-	go run github.com/99designs/gqlgen generate
+	gqlgen generate
 
 .PHONY: gql-init
 gql-init: ## Initialize GraphQL (run once)

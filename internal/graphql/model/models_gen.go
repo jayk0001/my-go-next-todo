@@ -15,6 +15,16 @@ type AuthPayload struct {
 	ExpiresAt    string `json:"expiresAt"`
 }
 
+type BatchUpdateInput struct {
+	TodoIds []string         `json:"todoIds"`
+	Updates *UpdateTodoInput `json:"updates"`
+}
+
+type CreateTodoInput struct {
+	Title       string  `json:"title"`
+	Description *string `json:"description,omitempty"`
+}
+
 type LoginInput struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -40,6 +50,43 @@ type Session struct {
 }
 
 type Subscription struct {
+}
+
+type Todo struct {
+	ID          string  `json:"id"`
+	Title       string  `json:"title"`
+	Description *string `json:"description,omitempty"`
+	Completed   bool    `json:"completed"`
+	CreatedAt   string  `json:"createdAt"`
+	UpdatedAt   string  `json:"updatedAt"`
+	User        *User   `json:"user"`
+}
+
+type TodoFilter struct {
+	Completed *bool   `json:"completed,omitempty"`
+	Search    *string `json:"search,omitempty"`
+	Limit     *int    `json:"limit,omitempty"`
+	Offset    *int    `json:"offset,omitempty"`
+}
+
+type TodoListResponse struct {
+	Todos   []*Todo `json:"todos"`
+	Total   int     `json:"total"`
+	Limit   int     `json:"limit"`
+	Offset  int     `json:"offset"`
+	HasMore bool    `json:"hasMore"`
+}
+
+type TodoStats struct {
+	Total     int `json:"total"`
+	Completed int `json:"completed"`
+	Pending   int `json:"pending"`
+}
+
+type UpdateTodoInput struct {
+	Title       *string `json:"title,omitempty"`
+	Description *string `json:"description,omitempty"`
+	Completed   *bool   `json:"completed,omitempty"`
 }
 
 type User struct {

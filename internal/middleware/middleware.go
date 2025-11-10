@@ -10,10 +10,10 @@ import (
 	"github.com/jayk0001/my-go-next-todo/internal/auth"
 )
 
-type contextKey string
+type ContextKey string
 
 const (
-	userContextKey contextKey = "github.com/jayk0001/my-go-next-todo/middleware.user"
+	UserContextKey ContextKey = "github.com/jayk0001/my-go-next-todo/middleware.user"
 )
 
 // AuthMiddleware creates authentication middleware
@@ -51,7 +51,7 @@ func AuthMiddleware(authService *auth.AuthService) gin.HandlerFunc {
 		}
 
 		// Add user to context
-		ctx := context.WithValue(c.Request.Context(), userContextKey, user)
+		ctx := context.WithValue(c.Request.Context(), UserContextKey, user)
 		c.Request = c.Request.WithContext(ctx)
 
 		c.Next()
@@ -76,6 +76,6 @@ func CORS() gin.HandlerFunc {
 
 // GetUserFromContext helper function to extract user from context
 func GetUserFromContext(ctx context.Context) (*auth.User, bool) {
-	user, ok := ctx.Value(userContextKey).(*auth.User)
+	user, ok := ctx.Value(UserContextKey).(*auth.User)
 	return user, ok
 }

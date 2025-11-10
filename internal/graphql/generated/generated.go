@@ -61,15 +61,23 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		Login        func(childComplexity int, input model.LoginInput) int
-		Logout       func(childComplexity int) int
-		RefreshToken func(childComplexity int, token string) int
-		Register     func(childComplexity int, input model.RegisterInput) int
+		BatchUpdateTodos func(childComplexity int, input model.BatchUpdateInput) int
+		CreateTodo       func(childComplexity int, input model.CreateTodoInput) int
+		DeleteTodo       func(childComplexity int, id string) int
+		Login            func(childComplexity int, input model.LoginInput) int
+		Logout           func(childComplexity int) int
+		RefreshToken     func(childComplexity int, token string) int
+		Register         func(childComplexity int, input model.RegisterInput) int
+		ToggleTodo       func(childComplexity int, id string) int
+		UpdateTodo       func(childComplexity int, id string, input model.UpdateTodoInput) int
 	}
 
 	Query struct {
 		CurrentUser func(childComplexity int) int
 		Health      func(childComplexity int) int
+		Todo        func(childComplexity int, id string) int
+		TodoStats   func(childComplexity int) int
+		Todos       func(childComplexity int, filter *model.TodoFilter) int
 		UserProfile func(childComplexity int, id string) int
 	}
 
@@ -83,6 +91,32 @@ type ComplexityRoot struct {
 
 	Subscription struct {
 		AuthStatusChanged func(childComplexity int) int
+		TodoChanged       func(childComplexity int) int
+		TodoStatsChanged  func(childComplexity int) int
+	}
+
+	Todo struct {
+		Completed   func(childComplexity int) int
+		CreatedAt   func(childComplexity int) int
+		Description func(childComplexity int) int
+		ID          func(childComplexity int) int
+		Title       func(childComplexity int) int
+		UpdatedAt   func(childComplexity int) int
+		User        func(childComplexity int) int
+	}
+
+	TodoListResponse struct {
+		HasMore func(childComplexity int) int
+		Limit   func(childComplexity int) int
+		Offset  func(childComplexity int) int
+		Todos   func(childComplexity int) int
+		Total   func(childComplexity int) int
+	}
+
+	TodoStats struct {
+		Completed func(childComplexity int) int
+		Pending   func(childComplexity int) int
+		Total     func(childComplexity int) int
 	}
 
 	User struct {
@@ -100,14 +134,24 @@ type MutationResolver interface {
 	Login(ctx context.Context, input model.LoginInput) (*model.AuthPayload, error)
 	RefreshToken(ctx context.Context, token string) (*model.AuthPayload, error)
 	Logout(ctx context.Context) (bool, error)
+	CreateTodo(ctx context.Context, input model.CreateTodoInput) (*model.Todo, error)
+	UpdateTodo(ctx context.Context, id string, input model.UpdateTodoInput) (*model.Todo, error)
+	DeleteTodo(ctx context.Context, id string) (bool, error)
+	ToggleTodo(ctx context.Context, id string) (*model.Todo, error)
+	BatchUpdateTodos(ctx context.Context, input model.BatchUpdateInput) ([]*model.Todo, error)
 }
 type QueryResolver interface {
 	CurrentUser(ctx context.Context) (*model.User, error)
 	UserProfile(ctx context.Context, id string) (*model.User, error)
 	Health(ctx context.Context) (string, error)
+	Todos(ctx context.Context, filter *model.TodoFilter) (*model.TodoListResponse, error)
+	Todo(ctx context.Context, id string) (*model.Todo, error)
+	TodoStats(ctx context.Context) (*model.TodoStats, error)
 }
 type SubscriptionResolver interface {
 	AuthStatusChanged(ctx context.Context) (<-chan *model.User, error)
+	TodoChanged(ctx context.Context) (<-chan *model.Todo, error)
+	TodoStatsChanged(ctx context.Context) (<-chan *model.TodoStats, error)
 }
 
 type executableSchema struct {
@@ -173,6 +217,39 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AuthPayload.User(childComplexity), true
 
+	case "Mutation.batchUpdateTodos":
+		if e.complexity.Mutation.BatchUpdateTodos == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_batchUpdateTodos_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.BatchUpdateTodos(childComplexity, args["input"].(model.BatchUpdateInput)), true
+	case "Mutation.createTodo":
+		if e.complexity.Mutation.CreateTodo == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createTodo_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CreateTodo(childComplexity, args["input"].(model.CreateTodoInput)), true
+	case "Mutation.deleteTodo":
+		if e.complexity.Mutation.DeleteTodo == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteTodo_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteTodo(childComplexity, args["id"].(string)), true
 	case "Mutation.login":
 		if e.complexity.Mutation.Login == nil {
 			break
@@ -212,6 +289,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.Register(childComplexity, args["input"].(model.RegisterInput)), true
+	case "Mutation.toggleTodo":
+		if e.complexity.Mutation.ToggleTodo == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_toggleTodo_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ToggleTodo(childComplexity, args["id"].(string)), true
+	case "Mutation.updateTodo":
+		if e.complexity.Mutation.UpdateTodo == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateTodo_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateTodo(childComplexity, args["id"].(string), args["input"].(model.UpdateTodoInput)), true
 
 	case "Query.currentUser":
 		if e.complexity.Query.CurrentUser == nil {
@@ -225,6 +324,34 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Health(childComplexity), true
+	case "Query.todo":
+		if e.complexity.Query.Todo == nil {
+			break
+		}
+
+		args, err := ec.field_Query_todo_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Todo(childComplexity, args["id"].(string)), true
+	case "Query.todoStats":
+		if e.complexity.Query.TodoStats == nil {
+			break
+		}
+
+		return e.complexity.Query.TodoStats(childComplexity), true
+	case "Query.todos":
+		if e.complexity.Query.Todos == nil {
+			break
+		}
+
+		args, err := ec.field_Query_todos_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Todos(childComplexity, args["filter"].(*model.TodoFilter)), true
 	case "Query.userProfile":
 		if e.complexity.Query.UserProfile == nil {
 			break
@@ -274,6 +401,111 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Subscription.AuthStatusChanged(childComplexity), true
+	case "Subscription.todoChanged":
+		if e.complexity.Subscription.TodoChanged == nil {
+			break
+		}
+
+		return e.complexity.Subscription.TodoChanged(childComplexity), true
+	case "Subscription.todoStatsChanged":
+		if e.complexity.Subscription.TodoStatsChanged == nil {
+			break
+		}
+
+		return e.complexity.Subscription.TodoStatsChanged(childComplexity), true
+
+	case "Todo.completed":
+		if e.complexity.Todo.Completed == nil {
+			break
+		}
+
+		return e.complexity.Todo.Completed(childComplexity), true
+	case "Todo.createdAt":
+		if e.complexity.Todo.CreatedAt == nil {
+			break
+		}
+
+		return e.complexity.Todo.CreatedAt(childComplexity), true
+	case "Todo.description":
+		if e.complexity.Todo.Description == nil {
+			break
+		}
+
+		return e.complexity.Todo.Description(childComplexity), true
+	case "Todo.id":
+		if e.complexity.Todo.ID == nil {
+			break
+		}
+
+		return e.complexity.Todo.ID(childComplexity), true
+	case "Todo.title":
+		if e.complexity.Todo.Title == nil {
+			break
+		}
+
+		return e.complexity.Todo.Title(childComplexity), true
+	case "Todo.updatedAt":
+		if e.complexity.Todo.UpdatedAt == nil {
+			break
+		}
+
+		return e.complexity.Todo.UpdatedAt(childComplexity), true
+	case "Todo.user":
+		if e.complexity.Todo.User == nil {
+			break
+		}
+
+		return e.complexity.Todo.User(childComplexity), true
+
+	case "TodoListResponse.hasMore":
+		if e.complexity.TodoListResponse.HasMore == nil {
+			break
+		}
+
+		return e.complexity.TodoListResponse.HasMore(childComplexity), true
+	case "TodoListResponse.limit":
+		if e.complexity.TodoListResponse.Limit == nil {
+			break
+		}
+
+		return e.complexity.TodoListResponse.Limit(childComplexity), true
+	case "TodoListResponse.offset":
+		if e.complexity.TodoListResponse.Offset == nil {
+			break
+		}
+
+		return e.complexity.TodoListResponse.Offset(childComplexity), true
+	case "TodoListResponse.todos":
+		if e.complexity.TodoListResponse.Todos == nil {
+			break
+		}
+
+		return e.complexity.TodoListResponse.Todos(childComplexity), true
+	case "TodoListResponse.total":
+		if e.complexity.TodoListResponse.Total == nil {
+			break
+		}
+
+		return e.complexity.TodoListResponse.Total(childComplexity), true
+
+	case "TodoStats.completed":
+		if e.complexity.TodoStats.Completed == nil {
+			break
+		}
+
+		return e.complexity.TodoStats.Completed(childComplexity), true
+	case "TodoStats.pending":
+		if e.complexity.TodoStats.Pending == nil {
+			break
+		}
+
+		return e.complexity.TodoStats.Pending(childComplexity), true
+	case "TodoStats.total":
+		if e.complexity.TodoStats.Total == nil {
+			break
+		}
+
+		return e.complexity.TodoStats.Total(childComplexity), true
 
 	case "User.authInfo":
 		if e.complexity.User.AuthInfo == nil {
@@ -320,8 +552,12 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	opCtx := graphql.GetOperationContext(ctx)
 	ec := executionContext{opCtx, e, 0, 0, make(chan graphql.DeferredResult)}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputBatchUpdateInput,
+		ec.unmarshalInputCreateTodoInput,
 		ec.unmarshalInputLoginInput,
 		ec.unmarshalInputRegisterInput,
+		ec.unmarshalInputTodoFilter,
+		ec.unmarshalInputUpdateTodoInput,
 	)
 	first := true
 
@@ -518,12 +754,137 @@ type Subscription {
   # Subscribe to authentication status changes
   authStatusChanged: User
 }`, BuiltIn: false},
+	{Name: "../schema/todo.graphql", Input: `# Todo represents a todo item in the system
+type Todo {
+  id: ID!
+  title: String!
+  description: String
+  completed: Boolean!
+  createdAt: String!
+  updatedAt: String!
+  user: User!
+}
+
+# TodoStats represents statistics about user's todos
+type TodoStats {
+  total: Int!
+  completed: Int!
+  pending: Int!
+}
+
+# TodoListResponse represents a paginated list of todos
+type TodoListResponse {
+  todos: [Todo!]!
+  total: Int!
+  limit: Int!
+  offset: Int!
+  hasMore: Boolean!
+}
+
+# CreateTodoInput contains data for creating a new todo
+input CreateTodoInput {
+  title: String!
+  description: String
+}
+
+# UpdateTodoInput contains data for updating a todo
+input UpdateTodoInput {
+  title: String
+  description: String
+  completed: Boolean
+}
+
+# TodoFilter contains filtering options for querying todos
+input TodoFilter {
+  completed: Boolean
+  search: String
+  limit: Int
+  offset: Int
+}
+
+# BatchUpdateInput for updating multiple todos
+input BatchUpdateInput {
+  todoIds: [ID!]!
+  updates: UpdateTodoInput!
+}
+
+# Extend existing Query type
+extend type Query {
+  # Get todos for current user with filtering
+  todos(filter: TodoFilter): TodoListResponse!
+  
+  # Get a specific todo by ID
+  todo(id: ID!): Todo
+  
+  # Get todo statistics for current user
+  todoStats: TodoStats!
+}
+
+# Extend existing Mutation type  
+extend type Mutation {
+  # Create a new todo
+  createTodo(input: CreateTodoInput!): Todo!
+  
+  # Update an existing todo
+  updateTodo(id: ID!, input: UpdateTodoInput!): Todo!
+  
+  # Delete a todo
+  deleteTodo(id: ID!): Boolean!
+  
+  # Toggle todo completion status
+  toggleTodo(id: ID!): Todo!
+  
+  # Batch update multiple todos
+  batchUpdateTodos(input: BatchUpdateInput!): [Todo!]!
+}
+
+# Extend existing Subscription type (for future real-time features)
+extend type Subscription {
+  # Subscribe to todo changes for current user
+  todoChanged: Todo
+  
+  # Subscribe to todo statistics changes
+  todoStatsChanged: TodoStats
+}`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_Mutation_batchUpdateTodos_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNBatchUpdateInput2githubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐBatchUpdateInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_createTodo_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCreateTodoInput2githubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐCreateTodoInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteTodo_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
 
 func (ec *executionContext) field_Mutation_login_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
@@ -558,6 +919,33 @@ func (ec *executionContext) field_Mutation_register_args(ctx context.Context, ra
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_toggleTodo_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateTodo_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateTodoInput2githubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐUpdateTodoInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -566,6 +954,28 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		return nil, err
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_todo_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_todos_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "filter", ec.unmarshalOTodoFilter2ᚖgithubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐTodoFilter)
+	if err != nil {
+		return nil, err
+	}
+	args["filter"] = arg0
 	return args, nil
 }
 
@@ -1043,6 +1453,275 @@ func (ec *executionContext) fieldContext_Mutation_logout(_ context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_createTodo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_createTodo,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().CreateTodo(ctx, fc.Args["input"].(model.CreateTodoInput))
+		},
+		nil,
+		ec.marshalNTodo2ᚖgithubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐTodo,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_createTodo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Todo_id(ctx, field)
+			case "title":
+				return ec.fieldContext_Todo_title(ctx, field)
+			case "description":
+				return ec.fieldContext_Todo_description(ctx, field)
+			case "completed":
+				return ec.fieldContext_Todo_completed(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Todo_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Todo_updatedAt(ctx, field)
+			case "user":
+				return ec.fieldContext_Todo_user(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Todo", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createTodo_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateTodo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_updateTodo,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().UpdateTodo(ctx, fc.Args["id"].(string), fc.Args["input"].(model.UpdateTodoInput))
+		},
+		nil,
+		ec.marshalNTodo2ᚖgithubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐTodo,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateTodo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Todo_id(ctx, field)
+			case "title":
+				return ec.fieldContext_Todo_title(ctx, field)
+			case "description":
+				return ec.fieldContext_Todo_description(ctx, field)
+			case "completed":
+				return ec.fieldContext_Todo_completed(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Todo_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Todo_updatedAt(ctx, field)
+			case "user":
+				return ec.fieldContext_Todo_user(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Todo", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateTodo_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteTodo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_deleteTodo,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().DeleteTodo(ctx, fc.Args["id"].(string))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteTodo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteTodo_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_toggleTodo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_toggleTodo,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().ToggleTodo(ctx, fc.Args["id"].(string))
+		},
+		nil,
+		ec.marshalNTodo2ᚖgithubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐTodo,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_toggleTodo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Todo_id(ctx, field)
+			case "title":
+				return ec.fieldContext_Todo_title(ctx, field)
+			case "description":
+				return ec.fieldContext_Todo_description(ctx, field)
+			case "completed":
+				return ec.fieldContext_Todo_completed(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Todo_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Todo_updatedAt(ctx, field)
+			case "user":
+				return ec.fieldContext_Todo_user(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Todo", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_toggleTodo_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_batchUpdateTodos(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_batchUpdateTodos,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().BatchUpdateTodos(ctx, fc.Args["input"].(model.BatchUpdateInput))
+		},
+		nil,
+		ec.marshalNTodo2ᚕᚖgithubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐTodoᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_batchUpdateTodos(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Todo_id(ctx, field)
+			case "title":
+				return ec.fieldContext_Todo_title(ctx, field)
+			case "description":
+				return ec.fieldContext_Todo_description(ctx, field)
+			case "completed":
+				return ec.fieldContext_Todo_completed(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Todo_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Todo_updatedAt(ctx, field)
+			case "user":
+				return ec.fieldContext_Todo_user(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Todo", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_batchUpdateTodos_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_currentUser(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -1165,6 +1844,153 @@ func (ec *executionContext) fieldContext_Query_health(_ context.Context, field g
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_todos(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_todos,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().Todos(ctx, fc.Args["filter"].(*model.TodoFilter))
+		},
+		nil,
+		ec.marshalNTodoListResponse2ᚖgithubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐTodoListResponse,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_todos(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "todos":
+				return ec.fieldContext_TodoListResponse_todos(ctx, field)
+			case "total":
+				return ec.fieldContext_TodoListResponse_total(ctx, field)
+			case "limit":
+				return ec.fieldContext_TodoListResponse_limit(ctx, field)
+			case "offset":
+				return ec.fieldContext_TodoListResponse_offset(ctx, field)
+			case "hasMore":
+				return ec.fieldContext_TodoListResponse_hasMore(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TodoListResponse", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_todos_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_todo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_todo,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().Todo(ctx, fc.Args["id"].(string))
+		},
+		nil,
+		ec.marshalOTodo2ᚖgithubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐTodo,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_todo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Todo_id(ctx, field)
+			case "title":
+				return ec.fieldContext_Todo_title(ctx, field)
+			case "description":
+				return ec.fieldContext_Todo_description(ctx, field)
+			case "completed":
+				return ec.fieldContext_Todo_completed(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Todo_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Todo_updatedAt(ctx, field)
+			case "user":
+				return ec.fieldContext_Todo_user(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Todo", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_todo_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_todoStats(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_todoStats,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().TodoStats(ctx)
+		},
+		nil,
+		ec.marshalNTodoStats2ᚖgithubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐTodoStats,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_todoStats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "total":
+				return ec.fieldContext_TodoStats_total(ctx, field)
+			case "completed":
+				return ec.fieldContext_TodoStats_completed(ctx, field)
+			case "pending":
+				return ec.fieldContext_TodoStats_pending(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TodoStats", field.Name)
 		},
 	}
 	return fc, nil
@@ -1461,6 +2287,553 @@ func (ec *executionContext) fieldContext_Subscription_authStatusChanged(_ contex
 				return ec.fieldContext_User_authInfo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_todoChanged(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	return graphql.ResolveFieldStream(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Subscription_todoChanged,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Subscription().TodoChanged(ctx)
+		},
+		nil,
+		ec.marshalOTodo2ᚖgithubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐTodo,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Subscription_todoChanged(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Todo_id(ctx, field)
+			case "title":
+				return ec.fieldContext_Todo_title(ctx, field)
+			case "description":
+				return ec.fieldContext_Todo_description(ctx, field)
+			case "completed":
+				return ec.fieldContext_Todo_completed(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Todo_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Todo_updatedAt(ctx, field)
+			case "user":
+				return ec.fieldContext_Todo_user(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Todo", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_todoStatsChanged(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	return graphql.ResolveFieldStream(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Subscription_todoStatsChanged,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Subscription().TodoStatsChanged(ctx)
+		},
+		nil,
+		ec.marshalOTodoStats2ᚖgithubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐTodoStats,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Subscription_todoStatsChanged(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "total":
+				return ec.fieldContext_TodoStats_total(ctx, field)
+			case "completed":
+				return ec.fieldContext_TodoStats_completed(ctx, field)
+			case "pending":
+				return ec.fieldContext_TodoStats_pending(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TodoStats", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Todo_id(ctx context.Context, field graphql.CollectedField, obj *model.Todo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Todo_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Todo_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Todo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Todo_title(ctx context.Context, field graphql.CollectedField, obj *model.Todo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Todo_title,
+		func(ctx context.Context) (any, error) {
+			return obj.Title, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Todo_title(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Todo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Todo_description(ctx context.Context, field graphql.CollectedField, obj *model.Todo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Todo_description,
+		func(ctx context.Context) (any, error) {
+			return obj.Description, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Todo_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Todo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Todo_completed(ctx context.Context, field graphql.CollectedField, obj *model.Todo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Todo_completed,
+		func(ctx context.Context) (any, error) {
+			return obj.Completed, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Todo_completed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Todo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Todo_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.Todo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Todo_createdAt,
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Todo_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Todo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Todo_updatedAt(ctx context.Context, field graphql.CollectedField, obj *model.Todo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Todo_updatedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.UpdatedAt, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Todo_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Todo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Todo_user(ctx context.Context, field graphql.CollectedField, obj *model.Todo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Todo_user,
+		func(ctx context.Context) (any, error) {
+			return obj.User, nil
+		},
+		nil,
+		ec.marshalNUser2ᚖgithubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐUser,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Todo_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Todo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
+			case "email":
+				return ec.fieldContext_User_email(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_User_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_User_updatedAt(ctx, field)
+			case "lastLoginAt":
+				return ec.fieldContext_User_lastLoginAt(ctx, field)
+			case "authInfo":
+				return ec.fieldContext_User_authInfo(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TodoListResponse_todos(ctx context.Context, field graphql.CollectedField, obj *model.TodoListResponse) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TodoListResponse_todos,
+		func(ctx context.Context) (any, error) {
+			return obj.Todos, nil
+		},
+		nil,
+		ec.marshalNTodo2ᚕᚖgithubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐTodoᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TodoListResponse_todos(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TodoListResponse",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Todo_id(ctx, field)
+			case "title":
+				return ec.fieldContext_Todo_title(ctx, field)
+			case "description":
+				return ec.fieldContext_Todo_description(ctx, field)
+			case "completed":
+				return ec.fieldContext_Todo_completed(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Todo_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Todo_updatedAt(ctx, field)
+			case "user":
+				return ec.fieldContext_Todo_user(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Todo", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TodoListResponse_total(ctx context.Context, field graphql.CollectedField, obj *model.TodoListResponse) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TodoListResponse_total,
+		func(ctx context.Context) (any, error) {
+			return obj.Total, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TodoListResponse_total(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TodoListResponse",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TodoListResponse_limit(ctx context.Context, field graphql.CollectedField, obj *model.TodoListResponse) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TodoListResponse_limit,
+		func(ctx context.Context) (any, error) {
+			return obj.Limit, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TodoListResponse_limit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TodoListResponse",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TodoListResponse_offset(ctx context.Context, field graphql.CollectedField, obj *model.TodoListResponse) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TodoListResponse_offset,
+		func(ctx context.Context) (any, error) {
+			return obj.Offset, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TodoListResponse_offset(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TodoListResponse",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TodoListResponse_hasMore(ctx context.Context, field graphql.CollectedField, obj *model.TodoListResponse) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TodoListResponse_hasMore,
+		func(ctx context.Context) (any, error) {
+			return obj.HasMore, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TodoListResponse_hasMore(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TodoListResponse",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TodoStats_total(ctx context.Context, field graphql.CollectedField, obj *model.TodoStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TodoStats_total,
+		func(ctx context.Context) (any, error) {
+			return obj.Total, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TodoStats_total(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TodoStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TodoStats_completed(ctx context.Context, field graphql.CollectedField, obj *model.TodoStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TodoStats_completed,
+		func(ctx context.Context) (any, error) {
+			return obj.Completed, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TodoStats_completed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TodoStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TodoStats_pending(ctx context.Context, field graphql.CollectedField, obj *model.TodoStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TodoStats_pending,
+		func(ctx context.Context) (any, error) {
+			return obj.Pending, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TodoStats_pending(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TodoStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -3094,6 +4467,74 @@ func (ec *executionContext) fieldContext___Type_isOneOf(_ context.Context, field
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputBatchUpdateInput(ctx context.Context, obj any) (model.BatchUpdateInput, error) {
+	var it model.BatchUpdateInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"todoIds", "updates"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "todoIds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("todoIds"))
+			data, err := ec.unmarshalNID2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TodoIds = data
+		case "updates":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updates"))
+			data, err := ec.unmarshalNUpdateTodoInput2ᚖgithubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐUpdateTodoInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Updates = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputCreateTodoInput(ctx context.Context, obj any) (model.CreateTodoInput, error) {
+	var it model.CreateTodoInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"title", "description"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "title":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("title"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Title = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputLoginInput(ctx context.Context, obj any) (model.LoginInput, error) {
 	var it model.LoginInput
 	asMap := map[string]any{}
@@ -3156,6 +4597,95 @@ func (ec *executionContext) unmarshalInputRegisterInput(ctx context.Context, obj
 				return it, err
 			}
 			it.Password = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputTodoFilter(ctx context.Context, obj any) (model.TodoFilter, error) {
+	var it model.TodoFilter
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"completed", "search", "limit", "offset"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "completed":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completed"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Completed = data
+		case "search":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("search"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Search = data
+		case "limit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Limit = data
+		case "offset":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("offset"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Offset = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpdateTodoInput(ctx context.Context, obj any) (model.UpdateTodoInput, error) {
+	var it model.UpdateTodoInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"title", "description", "completed"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "title":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("title"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Title = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
+		case "completed":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("completed"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Completed = data
 		}
 	}
 
@@ -3317,6 +4847,41 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "createTodo":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createTodo(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateTodo":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateTodo(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteTodo":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteTodo(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "toggleTodo":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_toggleTodo(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "batchUpdateTodos":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_batchUpdateTodos(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -3407,6 +4972,69 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_health(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "todos":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_todos(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "todo":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_todo(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "todoStats":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_todoStats(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -3518,9 +5146,187 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 	switch fields[0].Name {
 	case "authStatusChanged":
 		return ec._Subscription_authStatusChanged(ctx, fields[0])
+	case "todoChanged":
+		return ec._Subscription_todoChanged(ctx, fields[0])
+	case "todoStatsChanged":
+		return ec._Subscription_todoStatsChanged(ctx, fields[0])
 	default:
 		panic("unknown field " + strconv.Quote(fields[0].Name))
 	}
+}
+
+var todoImplementors = []string{"Todo"}
+
+func (ec *executionContext) _Todo(ctx context.Context, sel ast.SelectionSet, obj *model.Todo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, todoImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Todo")
+		case "id":
+			out.Values[i] = ec._Todo_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "title":
+			out.Values[i] = ec._Todo_title(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "description":
+			out.Values[i] = ec._Todo_description(ctx, field, obj)
+		case "completed":
+			out.Values[i] = ec._Todo_completed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._Todo_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updatedAt":
+			out.Values[i] = ec._Todo_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "user":
+			out.Values[i] = ec._Todo_user(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var todoListResponseImplementors = []string{"TodoListResponse"}
+
+func (ec *executionContext) _TodoListResponse(ctx context.Context, sel ast.SelectionSet, obj *model.TodoListResponse) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, todoListResponseImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TodoListResponse")
+		case "todos":
+			out.Values[i] = ec._TodoListResponse_todos(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "total":
+			out.Values[i] = ec._TodoListResponse_total(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "limit":
+			out.Values[i] = ec._TodoListResponse_limit(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "offset":
+			out.Values[i] = ec._TodoListResponse_offset(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "hasMore":
+			out.Values[i] = ec._TodoListResponse_hasMore(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var todoStatsImplementors = []string{"TodoStats"}
+
+func (ec *executionContext) _TodoStats(ctx context.Context, sel ast.SelectionSet, obj *model.TodoStats) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, todoStatsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TodoStats")
+		case "total":
+			out.Values[i] = ec._TodoStats_total(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "completed":
+			out.Values[i] = ec._TodoStats_completed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "pending":
+			out.Values[i] = ec._TodoStats_pending(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
 }
 
 var userImplementors = []string{"User"}
@@ -3930,6 +5736,11 @@ func (ec *executionContext) marshalNAuthPayload2ᚖgithubᚗcomᚋjayk0001ᚋmy�
 	return ec._AuthPayload(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNBatchUpdateInput2githubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐBatchUpdateInput(ctx context.Context, v any) (model.BatchUpdateInput, error) {
+	res, err := ec.unmarshalInputBatchUpdateInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v any) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -3946,6 +5757,11 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
+func (ec *executionContext) unmarshalNCreateTodoInput2githubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐCreateTodoInput(ctx context.Context, v any) (model.CreateTodoInput, error) {
+	res, err := ec.unmarshalInputCreateTodoInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNID2string(ctx context.Context, v any) (string, error) {
 	res, err := graphql.UnmarshalID(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -3960,6 +5776,36 @@ func (ec *executionContext) marshalNID2string(ctx context.Context, sel ast.Selec
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) unmarshalNID2ᚕstringᚄ(ctx context.Context, v any) ([]string, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]string, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNID2string(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalNID2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNID2string(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v any) (int, error) {
@@ -4056,6 +5902,102 @@ func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.S
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNTodo2githubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐTodo(ctx context.Context, sel ast.SelectionSet, v model.Todo) graphql.Marshaler {
+	return ec._Todo(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTodo2ᚕᚖgithubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐTodoᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Todo) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNTodo2ᚖgithubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐTodo(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNTodo2ᚖgithubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐTodo(ctx context.Context, sel ast.SelectionSet, v *model.Todo) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Todo(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNTodoListResponse2githubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐTodoListResponse(ctx context.Context, sel ast.SelectionSet, v model.TodoListResponse) graphql.Marshaler {
+	return ec._TodoListResponse(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTodoListResponse2ᚖgithubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐTodoListResponse(ctx context.Context, sel ast.SelectionSet, v *model.TodoListResponse) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TodoListResponse(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNTodoStats2githubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐTodoStats(ctx context.Context, sel ast.SelectionSet, v model.TodoStats) graphql.Marshaler {
+	return ec._TodoStats(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTodoStats2ᚖgithubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐTodoStats(ctx context.Context, sel ast.SelectionSet, v *model.TodoStats) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TodoStats(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNUpdateTodoInput2githubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐUpdateTodoInput(ctx context.Context, v any) (model.UpdateTodoInput, error) {
+	res, err := ec.unmarshalInputUpdateTodoInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateTodoInput2ᚖgithubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐUpdateTodoInput(ctx context.Context, v any) (*model.UpdateTodoInput, error) {
+	res, err := ec.unmarshalInputUpdateTodoInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v *model.User) graphql.Marshaler {
@@ -4358,6 +6300,24 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return res
 }
 
+func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v any) (*int, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalInt(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.SelectionSet, v *int) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalInt(*v)
+	return res
+}
+
 func (ec *executionContext) unmarshalOString2ᚖstring(ctx context.Context, v any) (*string, error) {
 	if v == nil {
 		return nil, nil
@@ -4374,6 +6334,28 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 	_ = ctx
 	res := graphql.MarshalString(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOTodo2ᚖgithubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐTodo(ctx context.Context, sel ast.SelectionSet, v *model.Todo) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Todo(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOTodoFilter2ᚖgithubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐTodoFilter(ctx context.Context, v any) (*model.TodoFilter, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputTodoFilter(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOTodoStats2ᚖgithubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐTodoStats(ctx context.Context, sel ast.SelectionSet, v *model.TodoStats) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._TodoStats(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOUser2ᚖgithubᚗcomᚋjayk0001ᚋmyᚑgoᚑnextᚑtodoᚋinternalᚋgraphqlᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v *model.User) graphql.Marshaler {

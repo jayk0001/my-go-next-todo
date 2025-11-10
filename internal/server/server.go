@@ -9,12 +9,14 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/gin-gonic/gin"
+
 	"github.com/jayk0001/my-go-next-todo/internal/auth"
 	"github.com/jayk0001/my-go-next-todo/internal/config"
 	"github.com/jayk0001/my-go-next-todo/internal/database"
 	"github.com/jayk0001/my-go-next-todo/internal/graphql/generated"
 	"github.com/jayk0001/my-go-next-todo/internal/graphql/resolver"
 	"github.com/jayk0001/my-go-next-todo/internal/middleware"
+	"github.com/jayk0001/my-go-next-todo/internal/todo"
 )
 
 // Server holds the HTTP server and dependencies
@@ -22,7 +24,8 @@ type Server struct {
 	router      *gin.Engine
 	db          *database.DB
 	config      *config.Config
-	authService *auth.AuthService // 추가
+	AuthService *auth.AuthService
+	TodoService *todo.TodoService
 }
 
 // New creates a new server instance
@@ -36,19 +39,21 @@ func New(cfg *config.Config, db *database.DB) *Server {
 
 	// Initialize auth service
 	authService := auth.NewAuthService(db.Pool, cfg.JWT.Secret, cfg.JWT.ExpiryHours)
+	todoService := todo.NewTodoServiceWithDB(db.Pool)
 
 	server := &Server{
 		router:      router,
 		db:          db,
 		config:      cfg,
-		authService: authService, // save to struct
+		AuthService: authService, // save to struct
+		TodoService: todoService,
 	}
 
 	// Middleware (get authService from struct)
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 	router.Use(corsMiddleware())
-	router.Use(middleware.AuthMiddleware(server.authService))
+	router.Use(middleware.AuthMiddleware(server.AuthService))
 
 	server.setupRoutes()
 	return server
@@ -91,7 +96,7 @@ func (s *Server) Router() *gin.Engine {
 // graphQL setting
 func (s *Server) setupGraphQL() {
 	// Reset AuthService
-	resolverInstance := resolver.NewResolver(s.authService)
+	resolverInstance := resolver.NewResolver(s.AuthService, s.TodoService)
 
 	// create GraphQL server
 	gqlServer := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{

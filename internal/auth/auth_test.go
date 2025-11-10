@@ -42,7 +42,7 @@ func TestJWTService(t *testing.T) {
 
 	jwtService := NewJWTService(secretKey, expiry)
 
-	userID := "123"
+	userID := 123
 	email := "test@example.com"
 
 	// Test token generation
@@ -62,7 +62,7 @@ func TestJWTService(t *testing.T) {
 	}
 
 	if claims.UserID != userID {
-		t.Errorf("Expected UserID %s, got %s", userID, claims.UserID)
+		t.Errorf("Expected UserID %d, got %d", userID, claims.UserID)
 	}
 
 	if claims.Email != email {
@@ -81,7 +81,7 @@ func TestJWTService(t *testing.T) {
 	}
 
 	if extractedUserID != userID {
-		t.Errorf("Expected UserID %s, got %s", userID, extractedUserID)
+		t.Errorf("Expected Subject: %d, got %s", TestData.userID, claims.Subject)
 	}
 }
 
